@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Búsqueda y Gestión</title>
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh; /* Forzar altura completa */
+            background-color: #f4f4f9;
+        }
+
+        /* Menú Lateral */
+        .menu {
+            width: 110px;
+            background-color: #123C4A;
+            color: white;
+            padding: 15px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh; /* Asegurar altura completa */
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow-y: auto; /* Permitir desplazamiento si es necesario */
+        }
+
+        .menu h1 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .menu button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 5px;
+            font-size: 0.8em;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .menu button i {
+            background-color: #123C4A;
+            padding: 15px;
+            font-size: 1.5em;
+            border-radius: 40%;
+            transition: background-color 0.3s ease;
+        }
+
+        .menu button.active i {
+            background-color: #0093C5;
+        }
+
+        /* Contenido Principal */
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            margin-left: 110px; /* Ajustar según el ancho del menú */
+            min-height: 100vh; /* Ajuste para ocupar toda la pantalla */
+            overflow-y: auto; /* Permitir desplazamiento si el contenido es grande */
+        }
+
+        .content h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        /* Secciones */
+        .search-section, .projects-section {
+            margin-bottom: 20px;
+        }
+
+        .search-section input, .projects-section input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .search-section button, .projects-section button {
+            padding: 10px 20px;
+            background-color: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .search-section button:hover, .projects-section button:hover {
+            background-color: #16a085;
+        }
+
+        .results, .project-list {
+            margin-top: 10px;
+        }
+
+        .result-item, .project-item {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .menu-logo {
+            display: block;
+            width: 60px;
+            height: auto;
+            margin: 0 auto 70px auto;
+        }
+    </style>
+    <!-- Agregar FontAwesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Menú Lateral -->
+    <div class="menu">
+        <a href="{{ url_for('index') }}">
+            <img src="https://i.ibb.co/cKGx0S7G/Icono-blanco.png" alt="Logo" class="menu-logo">
+        </a>
+        
+        <button><li class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+            <a class="nav-link" href="{{ url_for('search') }}">
+                <i class="fas fa-search me-1"></i> Buscar
+            </a>
+        </li></button>
+        <button><li class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+            <a class="nav-link" href="{{ url_for('history') }}">
+                <i class="fas fa-list""></i> Resultados
+            </a>
+        </li></button>
+        <button><li class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+            <a class="nav-link" href="{{ url_for('search') }}">
+                <i class="fas fa-edit"></i> Buscar
+            </a>
+        </li></button>
+        <button><li class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+            <a class="nav-link" href="{{ url_for('search') }}">
+                <i class="fas fa-folder"></i> Buscar
+            </a>
+        </li></button>
+        
+      
+    </div>
+
+
+    <script>
+        // Función para cargar aplicaciones web en el contenido principal
+        function loadApp(appName) {
+            let content = '';
+            let title = '';
+
+            switch (appName) {
+                case 'search':
+                    title = 'Búsqueda de Archivos';
+                    content = `
+                        <div class="search-section">
+                            <input type="text" id="directoryPath" placeholder="Ingresa la ruta del directorio">
+                            <button onclick="searchFiles()">Buscar</button>
+                            <div class="results" id="searchResults"></div>
+                        </div>
+                    `;
+                    break;
+                case 'results':
+                    title = 'Resultados de la Búsqueda';
+                    content = `
+                        <div class="results" id="resultsList"></div>
+                    `;
+                    break;
+                case 'prompts':
+                    title = 'Gestión de Prompts';
+                    content = `
+                        <div class="projects-section">
+                            <input type="text" id="promptName" placeholder="Nombre del Prompt">
+                            <textarea id="promptDescription" placeholder="Descripción del Prompt"></textarea>
+                            <button onclick="addPrompt()">Agregar Prompt</button>
+                            <div class="project-list" id="promptsList"></div>
+                        </div>
+                    `;
+                    break;
+                case 'projects':
+                    title = 'Gestión de Proyectos';
+                    content = `
+                        <div class="projects-section">
+                            <input type="text" id="projectName" placeholder="Nombre del Proyecto">
+                            <textarea id="projectDescription" placeholder="Descripción del Proyecto"></textarea>
+                            <button onclick="addProject()">Agregar Proyecto</button>
+                            <div class="project-list" id="projectsList"></div>
+                        </div>
+                    `;
+                    break;
+            }
+
+            document.getElementById('contentTitle').textContent = title;
+            document.getElementById('appContent').innerHTML = content;
+        }
+
+        // Funciones de ejemplo para la búsqueda y gestión de proyectos
+        function searchFiles() {
+            const directoryPath = document.getElementById('directoryPath').value;
+            // Simulación de resultados de búsqueda
+            const results = [
+                { name: 'archivo1.txt', path: '/ruta/archivo1.txt', modified: '2023-10-01' },
+                { name: 'archivo2.txt', path: '/ruta/archivo2.txt', modified: '2023-10-02' }
+            ];
+
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = '';
+            results.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `<strong>${file.name}</strong><br>Ruta: ${file.path}<br>Modificado: ${file.modified}`;
+                searchResults.appendChild(item);
+            });
+        }
+
+        function addPrompt() {
+            const name = document.getElementById('promptName').value;
+            const description = document.getElementById('promptDescription').value;
+
+            if (name && description) {
+                const prompt = { name, description };
+                const promptsList = document.getElementById('promptsList');
+                const item = document.createElement('div');
+                item.className = 'project-item';
+                item.innerHTML = `<strong>${prompt.name}</strong><br>${prompt.description}`;
+                promptsList.appendChild(item);
+            }
+        }
+
+        function addProject() {
+            const name = document.getElementById('projectName').value;
+            const description = document.getElementById('projectDescription').value;
+
+            if (name && description) {
+                const project = { name, description };
+                const projectsList = document.getElementById('projectsList');
+                const item = document.createElement('div');
+                item.className = 'project-item';
+                item.innerHTML = `<strong>${project.name}</strong><br>${project.description}`;
+                projectsList.appendChild(item);
+            }
+        }
+		
+		document.addEventListener("DOMContentLoaded", function () {
+    const buttons = document.querySelectorAll(".menu button");
+
+    buttons.forEach(button => {
+        button.addEventListener("click", function () {
+            // Remover la clase 'active' de todos los botones
+            buttons.forEach(btn => btn.classList.remove("active"));
+            
+            // Agregar la clase 'active' al botón clickeado
+            this.classList.add("active");
+        });
+    });
+});
+    </script>
+  
+</body>
+</html>

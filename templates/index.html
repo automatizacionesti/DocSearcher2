@@ -1,0 +1,237 @@
+<!-- {% extends "layout.html" %} -->
+
+
+
+{% block extra_css %}
+<style>
+    /* Fondo animado */
+    .hero-section {
+        position: relative;
+        min-height: calc(100vh - 76px - 400px);
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        overflow: hidden;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%;
+        left: -50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 30px 30px;
+        animation: backgroundMove 60s linear infinite;
+        opacity: 0.3;
+    }
+
+    @keyframes backgroundMove {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(-50%, -50%); }
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+        padding: 4rem 2rem;
+        color: white;
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.8s ease forwards;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        max-width: 600px;
+        margin: 0 auto 2rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.8s ease 0.2s forwards;
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .feature-section {
+        padding: 4rem 0;
+        background: white;
+    }
+
+    .feature-card {
+        padding: 2rem;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease;
+        height: 100%;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .feature-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+        color: var(--accent-color);
+    }
+
+    .stats-section {
+        padding: 3rem 0;
+        background: #f8f9fa;
+    }
+
+    .stat-card {
+        text-align: center;
+        padding: 1.5rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.8s ease forwards;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--secondary-color);
+        font-size: 1rem;
+    }
+
+    .cta-section {
+        padding: 4rem 0;
+        background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+        color: white;
+        text-align: center;
+    }
+
+    .cta-button {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        border-radius: 30px;
+        background: white;
+        color: var(--primary-color);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+        margin-top: 1.5rem;
+    }
+
+    .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        color: var(--accent-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'Menu.html' %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">DocSearch Pro</h1>
+        <p class="hero-subtitle">
+            Sistema avanzado de búsqueda documental que te permite encontrar información relevante 
+            en múltiples tipos de archivos de manera rápida y eficiente.
+        </p>
+        <a href="{{ url_for('search') }}" class="cta-button">
+            <i class="fas fa-search me-2"></i>Comenzar Búsqueda
+        </a>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="feature-section">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Múltiples Formatos</h3>
+                    <p>Analiza documentos PDF, Word, Excel, PowerPoint y más, todo en una única búsqueda.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Búsqueda Rápida</h3>
+                    <p>Algoritmos optimizados para encontrar resultados en cuestión de segundos.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Análisis Detallado</h3>
+                    <p>Visualiza estadísticas y métricas de tus búsquedas en tiempo real.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_searches|default(0) }}</div>
+                    <div class="stat-label">Búsquedas Realizadas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_files|default(0) }}</div>
+                    <div class="stat-label">Archivos Analizados</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_findings|default(0) }}</div>
+                    <div class="stat-label">Coincidencias Encontradas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ "%.1f"|format(stats.avg_execution_time|default(0)) }}s</div>
+                    <div class="stat-label">Tiempo Promedio</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <h2>¿Listo para comenzar?</h2>
+        <p class="mb-4">Descubre la potencia de la búsqueda documental inteligente</p>
+        <a href="{{ url_for('search') }}" class="cta-button">
+            <i class="fas fa-rocket me-2"></i>Iniciar Ahora
+        </a>
+    </div>
+</section>
+{% endblock %} 

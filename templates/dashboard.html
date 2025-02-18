@@ -1,0 +1,611 @@
+{% extends "layout.html" %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+<style>
+    .stat-card {
+        border-radius: 10px;
+        transition: transform 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .trend-indicator {
+        font-size: 0.9rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: 8px;
+    }
+
+    .trend-up {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+
+    .trend-down {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+    }
+
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 15px 15px;
+    }
+
+    .period-selector {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem;
+    }
+
+    .period-selector button {
+        background: none;
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .period-selector button.active {
+        background-color: white;
+        color: var(--primary-color);
+    }
+
+    .quick-stats {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .quick-stat {
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-0">Panel de Control</h1>
+                <p class="mb-0 opacity-75">Análisis y estadísticas del sistema</p>
+            </div>
+            <div class="period-selector">
+                <button class="active">Hoy</button>
+                <button>Semana</button>
+                <button>Mes</button>
+                <button>Año</button>
+            </div>
+        </div>
+        <div class="quick-stats">
+            <div class="quick-stat">
+                <i class="fas fa-arrow-up text-success"></i>
+                <span>+{{ stats.daily_increase }}% hoy</span>
+            </div>
+            <div class="quick-stat">
+                <span>{{ stats.active_users }} usuarios activos</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Estadísticas Generales -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-value">{{ stats.total_searches }}</div>
+                            <div class="stat-label">Búsquedas Totales</div>
+                        </div>
+                        <i class="fas fa-search stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-value">{{ stats.total_findings }}</div>
+                            <div class="stat-label">Coincidencias Encontradas</div>
+                        </div>
+                        <i class="fas fa-check-circle stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-value">{{ stats.total_files }}</div>
+                            <div class="stat-label">Archivos Analizados</div>
+                        </div>
+                        <i class="fas fa-file-alt stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-value">{{ "%.2f"|format(stats.avg_execution_time) }}s</div>
+                            <div class="stat-label">Tiempo Promedio</div>
+                        </div>
+                        <i class="fas fa-clock stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nueva fila de métricas -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Rendimiento del Sistema</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-secondary" data-performance-type="cpu">CPU</button>
+                        <button class="btn btn-sm btn-outline-secondary active" data-performance-type="memory">Memoria</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-performance-type="disk">Disco</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-performance-type="network">Red</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tipos de Archivos Analizados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="fileTypesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nueva fila de métricas -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Archivos No Analizados por Día</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="unprocessedFilesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ... otros gráficos ... -->
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Términos más buscados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="topTermsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Actividad Semanal</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="weeklyActivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Búsquedas Recientes -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Búsquedas Recientes</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Términos</th>
+                            <th>Resultados</th>
+                            <th>Archivos</th>
+                            <th>Tiempo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for search in recent_searches %}
+                        <tr>
+                            <td>{{ search.search_date }}</td>
+                            <td>{{ search.keywords }}</td>
+                            <td>{{ search.total_results }}</td>
+                            <td>{{ search.total_files_analyzed }}</td>
+                            <td>{{ "%.2f"|format(search.execution_time) }}s</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agregar el indicador de red en el panel de métricas -->
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon">
+                <i class="fas fa-network-wired"></i>
+            </div>
+            <div class="metric-info">
+                <h3>Red</h3>
+                <p id="networkUsage">0 MB/s</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuración común para los gráficos
+    Chart.defaults.font.family = "'Segoe UI', 'Arial', sans-serif";
+    Chart.defaults.color = '#666';
+    
+    // Datos para los gráficos
+    const topTermsData = {{ top_terms_data|tojson }};
+    const weeklyData = {{ weekly_data|tojson }};
+    
+    // Gráfico de términos más buscados
+    new Chart(document.getElementById('topTermsChart'), {
+        type: 'bar',
+        data: {
+            labels: topTermsData.labels,
+            datasets: [{
+                label: 'Número de búsquedas',
+                data: topTermsData.counts,
+                backgroundColor: 'rgba(54, 162, 235, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+    
+    // Gráfico de actividad semanal
+    new Chart(document.getElementById('weeklyActivityChart'), {
+        type: 'line',
+        data: {
+            labels: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+            datasets: [{
+                label: 'Búsquedas por día',
+                data: weeklyData.searches,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+
+    // Datos de rendimiento
+    const performanceData = {
+        cpu: { labels: [], data: [] },
+        memory: { labels: [], data: [] },
+        disk: { labels: [], data: [] },
+        network: { labels: [], data: [] }
+    };
+
+    // Colores para cada tipo de métrica
+    const performanceColors = {
+        cpu: 'rgba(255, 99, 132, 1)',
+        memory: 'rgba(54, 162, 235, 1)',
+        disk: 'rgba(75, 192, 192, 1)',
+        network: 'rgba(153, 102, 255, 1)'
+    };
+
+    // Función para actualizar el gráfico de rendimiento
+    function updatePerformanceChart(type) {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        if (window.performanceChart instanceof Chart) {
+            window.performanceChart.destroy();
+        }
+
+        window.performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: performanceData[type].labels,
+                datasets: [{
+                    label: type.charAt(0).toUpperCase() + type.slice(1),
+                    data: performanceData[type].data,
+                    borderColor: performanceColors[type],
+                    tension: 0.4,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                if (type === 'network') {
+                                    return value + ' MB/s';
+                                }
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (type === 'network') {
+                                    return `${label}: ${context.parsed.y} MB/s`;
+                                }
+                                return `${label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 750
+                }
+            }
+        });
+        
+        // Asegurarnos de que el gráfico se actualice correctamente
+        window.performanceChart.update();
+    }
+
+    // Función para actualizar datos de rendimiento
+    function updateSystemMetrics() {
+        fetch('/system_metrics')
+            .then(response => response.json())
+            .then(data => {
+                const now = new Date().toLocaleTimeString();
+                
+                // Actualizar datos de CPU
+                performanceData.cpu.labels.push(now);
+                performanceData.cpu.data.push(data.cpu);
+                if (performanceData.cpu.labels.length > 10) {
+                    performanceData.cpu.labels.shift();
+                    performanceData.cpu.data.shift();
+                }
+
+                // Actualizar datos de memoria
+                performanceData.memory.labels.push(now);
+                performanceData.memory.data.push(data.memory);
+                if (performanceData.memory.labels.length > 10) {
+                    performanceData.memory.labels.shift();
+                    performanceData.memory.data.shift();
+                }
+
+                // Actualizar datos de disco
+                performanceData.disk.labels.push(now);
+                performanceData.disk.data.push(data.disk);
+                if (performanceData.disk.labels.length > 10) {
+                    performanceData.disk.labels.shift();
+                    performanceData.disk.data.shift();
+                }
+
+                // Actualizar datos de red
+                performanceData.network.labels.push(now);
+                performanceData.network.data.push(data.network.usage_percent);
+                if (performanceData.network.labels.length > 10) {
+                    performanceData.network.labels.shift();
+                    performanceData.network.data.shift();
+                }
+
+                // Actualizar gráfico activo
+                const activeType = document.querySelector('.btn-group .active').dataset.performanceType;
+                updatePerformanceChart(activeType);
+
+                // Actualizar gráfico de tipos de archivos
+                if (data.file_types) {
+                    fileTypesChart.data.datasets[0].data = [
+                        data.file_types.pdf || 0,
+                        data.file_types.word || 0,
+                        data.file_types.excel || 0,
+                        data.file_types.powerpoint || 0,
+                        data.file_types.text || 0,
+                        data.file_types.others || 0
+                    ];
+                    fileTypesChart.update();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Inicializar el gráfico con datos de memoria después de que Chart.js esté cargado
+    window.addEventListener('load', function() {
+        updatePerformanceChart('memory');
+    });
+
+    // Actualizar métricas cada 3 segundos
+    updateSystemMetrics();
+    setInterval(updateSystemMetrics, 3000);
+
+    // Gráfico de tipos de archivos
+    const fileTypesChart = new Chart(document.getElementById('fileTypesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['PDF', 'Word', 'Excel', 'PowerPoint', 'Texto', 'Otros'],
+            datasets: [{
+                data: [
+                    {{ file_types.get('pdf', 0)|default(0) }},
+                    {{ file_types.get('docx', 0)|default(0) }},
+                    {{ file_types.get('xlsx', 0)|default(0) }},
+                    {{ file_types.get('pptx', 0)|default(0) }},
+                    {{ file_types.get('txt', 0)|default(0) }},
+                    {{ file_types.get('others', 0)|default(0) }}
+                ],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',   // Rojo para PDF
+                    'rgba(54, 162, 235, 0.8)',   // Azul para Word
+                    'rgba(75, 192, 192, 0.8)',   // Verde para Excel
+                    'rgba(255, 206, 86, 0.8)',   // Amarillo para PowerPoint
+                    'rgba(153, 102, 255, 0.8)',  // Morado para Texto
+                    'rgba(201, 203, 207, 0.8)'   // Gris para Otros
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return `${label}: ${value} archivos (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Manejar cambios en los botones de rendimiento
+    document.querySelectorAll('[data-performance-type]').forEach(button => {
+        button.addEventListener('click', function() {
+            const type = this.dataset.performanceType;
+            document.querySelector('.btn-group .active').classList.remove('active');
+            this.classList.add('active');
+            updatePerformanceChart(type);
+        });
+    });
+
+    // Gráfico de archivos no analizados
+    const unprocessedFilesChart = new Chart(document.getElementById('unprocessedFilesChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ unprocessed_stats.dates|tojson }},
+            datasets: [{
+                label: 'Archivos no analizados',
+                data: {{ unprocessed_stats.counts|tojson }},
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.parsed.y} archivos no analizados`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

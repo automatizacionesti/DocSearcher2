@@ -1,0 +1,690 @@
+{% extends "layout.html" %}
+
+{% block extra_css %}
+<style>
+    .history-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .history-header {
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+
+    .search-stats {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+    }
+
+    .search-filters {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .results-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .search-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .file-content {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .finding-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+    }
+
+    .search-header {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #eee;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .search-content {
+        padding: 1rem;
+    }
+
+    .file-item {
+        border-left: 3px solid #3498db;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0.5rem;
+        background: #f8f9fa;
+    }
+
+    .finding-item {
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        background: white;
+        border-radius: 4px;
+    }
+
+    .context-text {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.25rem;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .keyword-badge {
+        background: #3498db;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+{% include 'Menu.html' %}
+{% block content %}
+<div class="history-container">
+    <!-- Encabezado -->
+    <div class="history-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Historial de Búsquedas</h2>
+            <div>
+                <button class="btn btn-light" onclick="exportHistory()">
+                    <i class="fas fa-download me-2"></i>Exportar
+                </button>
+            </div>
+        </div>
+        <div class="search-stats">
+            <div class="stat-item">
+                <i class="fas fa-search me-2"></i>
+                <span>{{ stats.total_searches }} búsquedas</span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-file me-2"></i>
+                <span>{{ stats.total_files }} archivos</span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-check me-2"></i>
+                <span>{{ stats.total_findings }} coincidencias</span>
+        </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="search-filters">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text">
+                <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           id="searchFilter" 
+                           data-search="all"
+                           placeholder="Buscar en el historial...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="typeFilter">
+                    <option value="">Todos los tipos de archivo</option>
+                    <option value="pdf">PDF (.pdf)</option>
+                    <option value="docx">Word (.docx)</option>
+                    <option value="xlsx">Excel (.xlsx)</option>
+                    <option value="pptx">PowerPoint (.pptx)</option>
+                    <option value="txt">Texto (.txt)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="dateFilter">
+                    <option value="">Todas las fechas</option>
+                    <option value="today">Hoy</option>
+                    <option value="week">Última semana</option>
+                    <option value="month">Último mes</option>
+                    <option value="custom">Rango personalizado</option>
+                </select>
+                <div id="customDateRange" class="mt-2 d-none">
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="dateFrom">
+                        <span class="input-group-text">hasta</span>
+                        <input type="date" class="form-control" id="dateTo">
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
+    <!-- Resultados -->
+    <div class="results-container">
+        <div id="searchResults">
+            {% set page = request.args.get('page', 1) | int %}
+            {% set page_size = request.args.get('page_size', 10) | int %}
+            {% set start = (page - 1) * page_size %}
+            {% set end = start + page_size %}
+            {% set paginated_history = history[start:end] %}
+            
+            {% for record in paginated_history %}
+            <div class="search-card mb-3">
+                <div class="d-flex align-items-center p-3 border-bottom">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div class="me-3">
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-calendar me-1"></i>{{ record.date }}
+                            </span>
+                        </div>
+                        <div class="me-3">
+                            {% for keyword in record.keywords %}
+                            <span class="badge bg-primary me-1">
+                                <i class="fas fa-tag me-1"></i>{{ keyword }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        <div class="ms-auto d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="badge bg-info" title="Archivos encontrados">
+                                    <i class="fas fa-file me-1"></i>{{ record.total_files }}
+                                </span>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="previewFile('{{ record.files[0].file_path if record.files else '' }}')"
+                                        {% if not record.files %}disabled{% endif %}
+                                        title="Ver documento">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% if record.files %}
+                <div class="p-3 bg-light">
+                    <div class="file-content">
+                        {% for file in record.files %}
+                        <div class="d-flex align-items-center mb-2 p-2 bg-white rounded">
+                            <div class="me-3">
+                                <i class="fas fa-file-alt text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <strong class="me-2">{{ file.file_name }}</strong>
+                                    <span class="badge bg-light text-dark">{{ file.file_type }}</span>
+                                </div>
+                                <div class="small text-muted">
+                                    <span class="text-primary fw-bold">{{ file.findings[0].palabra }}</span>
+                                    <span class="ms-1">{{ file.findings[0].contexto }}</span>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#filePreviewModal"
+                                        onclick="openPreview('{{ file.file_path }}')"
+                                        title="Ver documento">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                
+            </div>
+            {% endfor %}
+        </div>
+    
+        <!-- Paginación -->
+        <div class="pagination-container text-center py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="results-info">
+                    Mostrando <span id="startRecord">1</span> - 
+                    <span id="endRecord">10</span> de 
+                    <span id="totalRecords">0</span> resultados
+                </div>
+                <div class="pagination-controls d-flex align-items-center">
+                    <button class="btn btn-outline-primary" id="prevPage" disabled>
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <span class="mx-3">
+                        Página <span id="currentPage">1</span> de 
+                        <span id="totalPages">1</span>
+                    </span>
+                    <button class="btn btn-outline-primary" id="nextPage" disabled>
+                        Siguiente <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="page-size">
+                    <select class="form-select" id="pageSize">
+                        <option value="5">5 por página</option>
+                        <option value="10" selected>10 por página</option>
+                        <option value="20">20 por página</option>
+                        <option value="50">50 por página</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Datos cargados desde el servidor (simulación con JSON)
+        const data = {{ history | tojson }};
+        let currentPage = 1;
+        let pageSize = 10;
+    
+        function renderPagination() {
+            const totalRecords = data.length;
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            const startRecord = (currentPage - 1) * pageSize + 1;
+            const endRecord = Math.min(currentPage * pageSize, totalRecords);
+    
+            // Actualizar la información de la paginación
+            document.getElementById('startRecord').textContent = startRecord;
+            document.getElementById('endRecord').textContent = endRecord;
+            document.getElementById('totalRecords').textContent = totalRecords;
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+    
+            // Habilitar/deshabilitar botones
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+    
+            // Renderizar resultados de la página actual
+            renderResults(startRecord - 1, endRecord);
+        }
+    
+        function renderResults(start, end) {
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = ''; // Limpiar resultados previos
+    
+            const fragment = document.createDocumentFragment();
+            data.slice(start, end).forEach(record => {
+                const card = document.createElement('div');
+                card.className = 'search-card mb-3';
+                card.innerHTML = `
+                    <div class="d-flex align-items-center p-3 border-bottom">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <div class="me-3">
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-calendar me-1"></i>${record.date}
+                        </span>
+                    </div>
+                    <div class="me-3">
+                        ${record.keywords.map(keyword => `
+                            <span class="badge bg-primary me-1">
+                                <i class="fas fa-tag me-1"></i>${keyword}
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div class="ms-auto d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="badge bg-info" title="Archivos encontrados">
+                                <i class="fas fa-file me-1"></i>${record.total_files}
+                            </span>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    onclick="previewFile('${record.files[0]?.file_path || ''}')"
+                                    ${record.files.length === 0 ? 'disabled' : ''}
+                                    title="Ver documento">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ${record.files.length > 0 ? `
+                <div class="p-3 bg-light">
+                    <div class="file-content">
+                        ${record.files.map(file => `
+                            <div class="d-flex align-items-center mb-2 p-2 bg-white rounded">
+                                <div class="me-3">
+                                    <i class="fas fa-file-alt text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong class="me-2">${file.file_name}</strong>
+                                        <span class="badge bg-light text-dark">${file.file_type}</span>
+                                    </div>
+                                    <div class="small text-muted">
+                                        <span class="text-primary fw-bold">${file.findings[0]?.palabra || ''}</span>
+                                        <span class="ms-1">${file.findings[0]?.contexto || ''}</span>
+                                    </div>
+                                    <div class="small text-muted">
+                                        <span class="text-primary fw-bold">${file.findings[0]?.palabra || ''}</span>
+                                        <span class="ms-1">${file.findings[0]?.path || ''}</span>
+                                    </div>
+                                </div>
+                                <div class="ms-3">
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#filePreviewModal"
+                                            onclick="openPreview('${(file.findings[0]?.path || '').replace(/\\/g, '/')}')"
+                                            title="Ver documento">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+                fragment.appendChild(card);
+            });
+    
+            searchResults.appendChild(fragment);
+        }
+    
+        function changePage(direction) {
+            if (direction === 'prev' && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 'next' && currentPage < Math.ceil(data.length / pageSize)) {
+                currentPage++;
+            }
+            renderPagination();
+        }
+    
+        function updatePageSize(newPageSize) {
+            pageSize = parseInt(newPageSize);
+            currentPage = 1; // Reiniciar a la primera página
+            renderPagination();
+        }
+    
+        // Event listeners
+        document.getElementById('prevPage').addEventListener('click', () => changePage('prev'));
+        document.getElementById('nextPage').addEventListener('click', () => changePage('next'));
+        document.getElementById('pageSize').addEventListener('change', (e) => updatePageSize(e.target.value));
+    
+        // Inicializar paginación
+        renderPagination();
+    </script>
+    </div>
+</div>
+
+<!-- Modal de Vista Previa -->
+<div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filePreviewModalLabel">Previsualización</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="filePathText" style="font-weight: bold;"></p>
+                <div id="excelContainer" style="display: none; max-height: 500px; overflow: auto;">
+                    <template id="excelTemplate">
+                        <table class="table table-bordered"></table>
+                    </template>
+                </div>
+                <iframe id="previewIframe" width="100%" height="500px" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+<script>
+    document.addEventListener('',function(){
+        
+    })
+    function openPreview(filePath) {
+    filePath = filePath.substring(2);  // Eliminar el primer carácter (si es necesario)
+    document.getElementById("filePathText").textContent = "Ruta del archivo: " + filePath;
+    const iframe = document.getElementById("previewIframe");
+    const excelContainer = document.getElementById("excelContainer");
+    const excelTemplate = document.getElementById("excelTemplate");
+
+    const fileExtension = filePath.split('.').pop().toLowerCase();
+    let viewerUrl = "";
+
+    console.log("Intentando cargar archivo:", filePath);
+
+    if (["xls", "xlsx"].includes(fileExtension)) {
+        iframe.style.display = "none";
+        excelContainer.style.display = "block";
+
+        // Limpia el contenedor de Excel y usa el template
+        excelContainer.innerHTML = "";
+        const templateClone = excelTemplate.content.cloneNode(true);
+        const table = templateClone.querySelector("table");
+
+        // Realiza la solicitud GET al backend para obtener el archivo Excel
+        fetch(`G:/${filePath}`)
+        console.log("Intentando cargar archivo desde:", `http://localhost:8000/${filePath}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                return response.arrayBuffer();
+            })
+            .then(data => {
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const html = XLSX.utils.sheet_to_html(sheet);
+                
+                // Agrega el contenido HTML al template
+                table.innerHTML = html;
+                excelContainer.appendChild(templateClone);
+            })
+            .catch(error => {
+                console.error("Error al cargar el archivo Excel:", error);
+                excelContainer.innerHTML = `<p style='color: red;'>Error al cargar el archivo Excel: ${error.message}</p>`;
+            });
+    } else {
+        excelContainer.style.display = "none";
+        iframe.style.display = "block";
+        viewerUrl = `http://localhost:8000/${filePath}`;
+        iframe.src = viewerUrl;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById("filePreviewModal"));
+    modal.show();
+}
+
+document.getElementById("filePreviewModal").addEventListener("hidden.bs.modal", function () {
+    document.getElementById("previewIframe").src = "";
+    document.getElementById("filePathText").textContent = "";
+    document.getElementById("excelContainer").innerHTML = "";
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove("modal-open");
+});
+</script>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función global para previsualizar archivos
+window.previewFile = function(filePath) {
+    if (!filePath) {
+        showToastMessage('Error: Ruta de archivo no válida');
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'text-center p-5';
+    loadingIndicator.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Cargando documento...</p>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const previewFrame = document.getElementById('previewFrame');
+    const modalBody = document.querySelector('.modal-body');
+    
+    // Mostrar modal con indicador de carga
+    modalBody.innerHTML = '';
+    modalBody.appendChild(loadingIndicator);
+    modal.show();
+    
+    // Verificar si el archivo existe
+    fetch(`/check_file/${encodeURIComponent(filePath)}`)
+        .then(response => {
+            if (response.ok) {
+                // Cargar el documento en el iframe
+                modalBody.innerHTML = `
+                    <iframe id="previewFrame" 
+                            src="/preview/${encodeURIComponent(filePath)}"
+                            style="width:100%; height:80vh; border:none;"
+                            onload="this.style.height = '80vh';"
+                            onerror="handlePreviewError()">
+                    </iframe>`;
+            } else {
+                throw new Error('El archivo no está disponible');
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar el archivo:', error);
+            modalBody.innerHTML = `
+                <div class="alert alert-danger m-3" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No se pudo cargar el documento. El archivo podría no estar disponible 
+                    o no tener permisos suficientes.
+                </div>`;
+        });
+};
+
+// Función para manejar errores de previsualización
+function handlePreviewError() {
+    const modalBody = document.querySelector('.modal-body');
+    modalBody.innerHTML = `
+        <div class="alert alert-warning m-3" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            No se puede previsualizar este tipo de archivo. 
+            Intente descargarlo para verlo.
+        </div>`;
+}
+
+// Función para mostrar mensajes toast
+function showToastMessage(message, type = 'error') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'primary'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                    data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>`;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Eliminar el toast después de mostrarlo
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+// Crear contenedor para los toasts si no existe
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtro de búsqueda
+    const searchFilter = document.getElementById('searchFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    
+    function applyFilters() {
+        const searchTerm = searchFilter.value.toLowerCase();
+        const fileType = typeFilter.value.toLowerCase();
+        const dateRange = dateFilter.value;
+        
+        document.querySelectorAll('.search-card').forEach(card => {
+            let showCard = true;
+            
+            // Filtro de búsqueda
+            if (searchTerm) {
+                const cardText = card.textContent.toLowerCase();
+                showCard = cardText.includes(searchTerm);
+            }
+            
+            // Filtro de tipo de archivo
+            if (showCard && fileType) {
+                const hasFileType = card.querySelector(`.badge:contains('${fileType}')`);
+                showCard = hasFileType !== null;
+            }
+            
+            // Filtro de fecha
+            if (showCard && dateRange) {
+                const dateText = card.querySelector('.search-header h5').textContent;
+                const date = new Date(dateText.split('del ')[1]);
+                const now = new Date();
+                
+                switch(dateRange) {
+                    case 'today':
+                        showCard = date.toDateString() === now.toDateString();
+                        break;
+                    case 'week':
+                        const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+                        showCard = date >= weekAgo;
+                        break;
+                    case 'month':
+                        const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+                        showCard = date >= monthAgo;
+                        break;
+                }
+            }
+            
+            card.style.display = showCard ? '' : 'none';
+        });
+    }
+    
+    searchFilter.addEventListener('input', applyFilters);
+    typeFilter.addEventListener('change', applyFilters);
+    dateFilter.addEventListener('change', applyFilters);
+});
+
+function exportHistory() {
+    // Implementar exportación
+    alert('Función de exportación en desarrollo');
+}
+</script>
+
+<!-- Contenedor para los toasts -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+{% endblock %} 
