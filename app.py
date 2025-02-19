@@ -13,9 +13,12 @@ import psutil
 from datetime import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'tu_clave_secreta'
+import os
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback_key')
+
 socketio = SocketIO(app)
-print("DEBUG - FIREBASE_PRIVATE_KEY:", os.environ.get("FIREBASE_PRIVATE_KEY"))
+
 firebase = FirebaseManager()
 
 class SearchProgress:
