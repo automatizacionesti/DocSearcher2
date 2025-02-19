@@ -15,6 +15,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tu_clave_secreta'
 socketio = SocketIO(app)
+print("DEBUG - FIREBASE_PRIVATE_KEY:", os.environ.get("FIREBASE_PRIVATE_KEY"))
 firebase = FirebaseManager()
 
 class SearchProgress:
