@@ -5,8 +5,7 @@ from firebase_admin import credentials, firestore
 from datetime import datetime
 from typing import Dict, List
 import time
-
-import os
+import tempfile  # Para manejar archivos temporales
 
 class FirebaseManager:
     def __init__(self):
@@ -31,15 +30,20 @@ class FirebaseManager:
             "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
         }
 
-        print("🔥 FirebaseManager inicializado correctamente.")
-
+        # Crear un archivo temporal con las credenciales
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp_file:
+            json.dump(firebase_config, temp_file)
+            temp_file_path = temp_file.name
 
         # Inicializar Firebase si no está ya inicializado
         if not firebase_admin._apps:
-            cred = credentials.Certificate(firebase_config)
+            cred = credentials.Certificate(temp_file_path)
             firebase_admin.initialize_app(cred)
 
         self.db = firestore.client()
+        
+        print("🔥 FirebaseManager inicializado correctamente.")
+
 
     def save_search_results(self, search_data: Dict, results: List[Dict]):
         """
