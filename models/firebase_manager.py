@@ -6,22 +6,37 @@ from datetime import datetime
 from typing import Dict, List
 import time
 
+import os
+
 class FirebaseManager:
     def __init__(self):
+        # Obtener la clave privada y validar su existencia
+        private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+        if private_key is None:
+            raise ValueError("FIREBASE_PRIVATE_KEY no está definida en las variables de entorno")
+
         # Crear el diccionario de credenciales usando variables de entorno
         firebase_config = {
-            "type": os.getenv("FIREBASE_TYPE"),
-            "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-            "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-            "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),  # Importante para evitar errores
-            "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-            "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-            "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
-            "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
-            "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
-            "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
-            "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
+            "type": os.getenv("FIREBASE_TYPE", ""),
+            "project_id": os.getenv("FIREBASE_PROJECT_ID", ""),
+            "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID", ""),
+            "private_key": private_key.replace("\\n", "\n"),  # Reemplazar correctamente los saltos de línea
+            "client_email": os.getenv("FIREBASE_CLIENT_EMAIL", ""),
+            "client_id": os.getenv("FIREBASE_CLIENT_ID", ""),
+            "auth_uri": os.getenv("FIREBASE_AUTH_URI", ""),
+            "token_uri": os.getenv("FIREBASE_TOKEN_URI", ""),
+            "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL", ""),
+            "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL", ""),
+            "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN", ""),
         }
+
+        # Verificar que todas las variables críticas estén definidas
+        missing_keys = [key for key, value in firebase_config.items() if not value]
+        if missing_keys:
+            raise ValueError(f"Las siguientes variables de entorno no están definidas: {', '.join(missing_keys)}")
+
+        self.config = firebase_config
+
 
         # Inicializar Firebase si no está ya inicializado
         if not firebase_admin._apps:
