@@ -582,7 +582,6 @@ def get_excel():
     return send_file(full_path, as_attachment=True)
 
 
-
 if __name__ == '__main__':
     # Crear directorios necesarios
     for directory in ['resultados']:
@@ -590,5 +589,8 @@ if __name__ == '__main__':
         # En sistemas Unix, establecer permisos
         if os.name != 'nt':
             os.chmod(directory, 0o777)  # Dar permisos completos
-        
-        socketio.run(app, debug=True) 
+    
+    # Obtener el puerto de la variable de entorno (Render lo define automáticamente)
+    port = int(os.getenv("PORT", 5000))  # Usa 5000 por defecto si no se encuentra la variable
+    
+    socketio.run(app, host="0.0.0.0", port=port, debug=True)
