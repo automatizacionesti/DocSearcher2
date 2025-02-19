@@ -1,4 +1,5 @@
 import os
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
@@ -7,15 +8,26 @@ import time
 
 class FirebaseManager:
     def __init__(self):
-        # Inicializar Firebase (asumiendo que tienes el archivo de credenciales)
-        # Usar ruta absoluta para el archivo de credenciales
-        cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'firebase-credentials.json')
-        if not os.path.exists(cred_path):
-            raise FileNotFoundError(f"No se encontró el archivo de credenciales en: {cred_path}")
-        
-        cred = credentials.Certificate(cred_path)
+        # Crear el diccionario de credenciales usando variables de entorno
+        firebase_config = {
+            "type": os.getenv("FIREBASE_TYPE"),
+            "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+            "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+            "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),  # Importante para evitar errores
+            "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+            "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+            "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+            "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
+            "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
+        }
+
+        # Inicializar Firebase si no está ya inicializado
         if not firebase_admin._apps:
+            cred = credentials.Certificate(firebase_config)
             firebase_admin.initialize_app(cred)
+
         self.db = firestore.client()
 
     def save_search_results(self, search_data: Dict, results: List[Dict]):
