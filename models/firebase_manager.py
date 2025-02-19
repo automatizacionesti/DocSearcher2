@@ -6,14 +6,22 @@ from datetime import datetime
 from typing import Dict, List
 import time
 
+import os
+
 class FirebaseManager:
     def __init__(self):
+        # Obtener la clave privada y validar que esté definida
+        firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY")
+        
+        if not firebase_private_key:
+            raise ValueError("ERROR: FIREBASE_PRIVATE_KEY no está definida en las variables de entorno.")
+
         # Crear el diccionario de credenciales usando variables de entorno
         firebase_config = {
             "type": os.getenv("FIREBASE_TYPE"),
             "project_id": os.getenv("FIREBASE_PROJECT_ID"),
             "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-            "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),  # Importante para evitar errores
+            "private_key": firebase_private_key.replace("\\n", "\n"),  # Convertir correctamente los saltos de línea
             "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
             "client_id": os.getenv("FIREBASE_CLIENT_ID"),
             "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
@@ -22,6 +30,9 @@ class FirebaseManager:
             "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
             "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
         }
+
+        print("🔥 FirebaseManager inicializado correctamente.")
+
 
         # Inicializar Firebase si no está ya inicializado
         if not firebase_admin._apps:
